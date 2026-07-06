@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BF财富增值</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+body{
+  background:#f5f7fa;
+  padding:24px;
+}
+.header-wrap{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:28px;
+}
+.title-group h1{
+  font-size:46px;
+  color:#22d0c0;
+  font-weight:700;
+}
+.title-desc{
+  color:#64748b;
+  font-size:15px;
+  margin-top:6px;
+}
+.header-buttons{
+  display:flex;
+  gap:12px;
+}
+.btn-clear-all{
+  background:#e2e8f0;
+  border:none;
+  border-radius:10px;
+  padding:10px 18px;
+  font-size:15px;
+  cursor:pointer;
+}
+.btn-new-proj{
+  background:#00b370;
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  padding:10px 22px;
+  font-size:15px;
+  cursor:pointer;
+  font-weight:500;
+}
+.main-container{
+  display:grid;
+  grid-template-columns:62% 36%;
+  gap:20px;
+  max-width:1700px;
+}
+.proj-list-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.proj-card{
+  background:#dce1e8;
+  border-radius:14px;
+  padding:20px;
+}
+.proj-name-block{
+  margin-bottom:18px;
+}
+.proj-name-block label{
+  display:block;
+  font-size:14px;
+  color:#333;
+  margin-bottom:6px;
+}
+.proj-name-block input{
+  width:100%;
+  background:#fff;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:10px 12px;
+  font-size:20px;
+  pointer-events:none;
+}
+.input-row{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr 1.3fr;
+  gap:10px;
+  margin-bottom:16px;
+}
+.form-item label{
+  font-size:14px;
+  color:#333;
+  display:block;
+  margin-bottom:6px;
+}
+.form-item input{
+  width:100%;
+  background:#fff;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:10px;
+  font-size:17px;
+}
+.input-amt{
+  border:2px solid #00b370;
+}
+.result-box{
+  background:#e6f7f2;
+  border:1px solid #00b370;
+  padding:8px 10px;
+}
+.result-line{
+  display:flex;
+  justify-content:space-between;
+  padding:3px 0;
+}
+.result-label{
+  font-size:14px;
+  color:#333;
+}
+.result-value{
+  font-size:19px;
+  font-weight:bold;
+  color:#00915c;
+}
+.copy-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding-top:14px;
+  border-top:1px solid #bcc3cd;
+}
+.copy-text{
+  font-size:14px;
+  color:#333;
+}
+.lang-buttons{
+  display:flex;
+  gap:8px;
+}
+.lang-btn{
+  padding:8px 16px;
+  border:1px solid #99a3b2;
+  background:#fff;
+  border-radius:8px;
+  font-size:15px;
+  cursor:pointer;
+}
+.lang-btn.active{
+  background:#00b370;
+  color:#fff;
+  border-color:#00b370;
+}
+.speech-box{
+  margin-top:14px;
+  padding:14px;
+  background:#e6f7f2;
+  border-radius:8px;
+  display:none;
+  line-height:1.7;
+}
+.copy-pt-btn{
+  margin-top:10px;
+  width:100%;
+  padding:9px;
+  background:#00915c;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:15px;
+}
+.stat-card{
+  background:#dce1e8;
+  border-radius:14px;
+  padding:22px;
+  height:fit-content;
+  position:sticky;
+  top:24px;
+}
+.stat-card h2{
+  font-size:22px;
+  color:#22d0c0;
+  margin-bottom:20px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.stat-block{
+  background:#fff;
+  border-radius:10px;
+  padding:16px;
+  margin-bottom:12px;
+}
+.stat-label{
+  font-size:14px;
+  color:#444;
+  margin-bottom:6px;
+}
+.stat-num{
+  font-size:34px;
+  font-weight:bold;
+}
+.profit-stat .stat-num{
+  color:#00915c;
+}
+.rate-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.rate-tag{
+  background:#c8d2e0;
+  padding:4px 10px;
+  border-radius:6px;
+  font-size:14px;
+}
+.progress-bar{
+  width:100%;
+  height:6px;
+  background:#c8d2e0;
+  border-radius:3px;
+  margin-top:10px;
+}
+.progress-fill{
+  height:100%;
+  background:#00b370;
+  border-radius:3px;
+  transition:0.3s;
+}
+.data-footer{
+  display:flex;
+  justify-content:space-between;
+  margin-top:20px;
+  font-size:13px;
+  color:#555;
+}
+.empty-tip{
+  padding:60px 0;
+  text-align:center;
+  color:#666;
+  font-size:17px;
+}
+.modal-mask{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:99;
+}
+.modal-box{
+  width:90%;
+  max-width:660px;
+  background:#fff;
+  border-radius:16px;
+  padding:32px;
+}
+.modal-title{
+  font-size:30px;
+  margin-bottom:28px;
+}
+.two-col-input{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-bottom:18px;
+}
+.modal-input{
+  width:100%;
+  padding:14px;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  font-size:17px;
+}
+#modalProjName{
+  border:2px solid #00b370;
+}
+.modal-tip{
+  color:#666;
+  margin:10px 0 32px 0;
+  font-size:14px;
+}
+.modal-btn-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.modal-cancel{
+  padding:16px;
+  background:#e2e8f0;
+  border:none;
+  border-radius:10px;
+  font-size:17px;
+  cursor:pointer;
+}
+.modal-create{
+  padding:16px;
+  background:#00b370;
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  font-size:17px;
+  font-weight:600;
+  cursor:pointer;
+}
+</style>
+</head>
+<body>
+<div class="header-wrap">
+  <div class="title-group">
+    <h1>BF财富增值</h1>
+    <p class="title-desc">自由配置投资周期 · 智能计算收益 · 多语言话术生成</p>
+  </div>
+  <div class="header-buttons">
+    <button class="btn-clear-all" onclick="clearAllData()">清空全部数据</button>
+    <button class="btn-new-proj" onclick="openCreateModal()">+ 新建项目</button>
+  </div>
+</div>
+
+<div class="main-container">
+  <div class="proj-list-wrap" id="projectListWrap">
+    <div class="empty-tip" id="emptyHint">暂无项目，点击右上角新建项目</div>
+  </div>
+
+  <div class="stat-card">
+    <h2>📈 总览统计</h2>
+    <div class="stat-block">
+      <div class="stat-label">总投资本金</div>
+      <div class="stat-num">R$ <span id="totalCap">0.00</span></div>
+    </div>
+    <div class="stat-block profit-stat">
+      <div class="stat-label">预计总收益</div>
+      <div class="stat-num">R$ <span id="totalProfit">0.00</span></div>
+    </div>
+    <div class="stat-block">
+      <div class="rate-row">
+        <div>
+          <div class="stat-label">资金总天数</div>
+          <div class="stat-num"><span id="totalDays">0</span> 天</div>
+        </div>
+        <span class="rate-tag">Avg <span id="avgRate">0.00</span>%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+    <div class="data-footer">
+      <span>数据状态</span>
+      <span>上次保存：<span id="saveTime">--</span></span>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="createModal">
+  <div class="modal-box">
+    <h3 class="modal-title">创建新项目</h3>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;margin-bottom:8px;font-size:16px;">项目名称 *</label>
+      <input class="modal-input" id="modalProjName" placeholder="例如：牛肉罐头">
+    </div>
+    <div class="two-col-input">
+      <div>
+        <label style="display:block;margin-bottom:8px;font-size:16px;">投资天数 *</label>
+        <input class="modal-input" id="modalCycle" type="number" min="1" value="1">
+      </div>
+      <div>
+        <label style="display:block;margin-bottom:8px;font-size:16px;">日利率(%) *</label>
+        <input class="modal-input" id="modalRate" type="number" step="0.01" min="0.01" value="0.5">
+      </div>
+    </div>
+    <div class="modal-tip">ⓘ 创建后在卡片内输入投资金额，可多次追加资金</div>
+    <div class="modal-btn-row">
+      <button class="modal-cancel" onclick="closeCreateModal()">取消</button>
+      <button class="modal-create" onclick="addNewProject()">创建</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const langTextPool = {
+  zh: {
+    template: "🎉 恭喜您成功认购【{name}】{day}天项目！\n\n您的资金已正式进入高效运行模式，开启收益之旅 ✨\n\n💰 投入金额：R${amt}\n\n📈 每日收益：R${dayInc}\n\n⏰ 项目周期：{day}天\n\n📊 预期回报：您将获得总计 R${maturity}（本金+收益）。\n\n💡 选择大于努力，行动决定未来。今天的小投入，就是明天的大回报。继续保持，您值得更好的收获！✨"
+  },
+  pt: {
+    template: "🎉 Parabéns por subscrever com sucesso o projeto [{name}] de {day} dias!\n\nSeu capital entrou oficialmente no modo de operação eficiente, iniciando sua jornada de rendimentos ✨\n\n💰 Valor investido: R${amt}\n\n📈 Rendimento diário: R${dayInc}\n\n⏰ Ciclo do projeto: {day} dias\n\n📊 Retorno esperado: Você receberá um total de R${maturity} (capital + lucros).\n\n💡 A escolha vale mais que o esforço, a ação define o futuro. O pequeno investimento de hoje é o grande retorno de amanhã. Continue assim, você merece ótimos ganhos!✨"
+  }
+};
+
+let globalTotalCap = 0;
+let globalTotalProfit = 0;
+let globalSumDays = 0;
+let globalSumRate = 0;
+let lastSaveTime = "--";
+let projectCardId = 0;
+
+function openCreateModal(){
+  document.getElementById("createModal").style.display = "flex";
+  document.getElementById("modalProjName").value = "";
+  document.getElementById("modalCycle").value = 1;
+  document.getElementById("modalRate").value = 0.5;
+}
+function closeCreateModal(){
+  document.getElementById("createModal").style.display = "none";
+}
+
+function addNewProject(){
+  const pName = document.getElementById("modalProjName").value.trim();
+  const pDay = Number(document.getElementById("modalCycle").value);
+  const pRate = Number(document.getElementById("modalRate").value);
+
+  if(pName === ""){
+    alert("请填写项目名称！");
+    return;
+  }
+  if(isNaN(pDay) || pDay < 1 || isNaN(pRate) || pRate <= 0){
+    alert("天数和利率必须填写有效数字！");
+    return;
+  }
+
+  document.getElementById("emptyHint").style.display = "none";
+
+  const cardId = "projCard_" + (++projectCardId);
+
+  const cardHtml = `
+    <div class="proj-card" id="${cardId}" data-day="${pDay}" data-rate="${pRate}" data-name="${pName}">
+      <div class="proj-name-block">
+        <label>项目名称</label>
+        <input type="text" value="${pName}" readonly>
+      </div>
+      <div class="input-row">
+        <div class="form-item">
+          <label>周期(天)</label>
+          <input type="number" value="${pDay}" readonly>
+        </div>
+        <div class="form-item">
+          <label>日利率(%)</label>
+          <input type="number" step="0.01" value="${pRate}" readonly>
+        </div>
+        <div class="form-item">
+          <label>投入金额(R$)</label>
+          <input class="input-amt" type="number" min="0" step="0.01" value="0" placeholder="输入金额追加">
+        </div>
+        <div class="form-item result-box">
+          <div class="result-line">
+            <span class="result-label">每日收益</span>
+            <span class="result-value" data-dayinc>R$0.00</span>
+          </div>
+          <div class="result-line">
+            <span class="result-label">到期总额</span>
+            <span class="result-value" data-maturity>R$0.00</span>
+          </div>
+        </div>
+      </div>
+      <div class="copy-bar">
+        <span class="copy-text">复制话术：</span>
+        <div class="lang-buttons">
+          <button class="lang-btn active" data-lang="zh">CN 中文</button>
+          <button class="lang-btn" data-lang="pt">BR Português</button>
+        </div>
+      </div>
+      <div class="speech-box">
+        <div class="speech-content"></div>
+        <button class="copy-pt-btn" onclick="copyPTText('${cardId}')">一键复制巴西葡语文案</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("projectListWrap").insertAdjacentHTML("beforeend", cardHtml);
+  closeCreateModal();
+
+  const newCard = document.getElementById(cardId);
+  const amtInput = newCard.querySelector(".input-amt");
+  const dayIncText = newCard.querySelector("[data-dayinc]");
+  const maturityText = newCard.querySelector("[data-maturity]");
+  const speechBox = newCard.querySelector(".speech-box");
+  const speechContent = newCard.querySelector(".speech-content");
+  const langBtns = newCard.querySelectorAll(".lang-btn");
+
+  const cardDay = Number(newCard.dataset.day);
+  const cardRate = Number(newCard.dataset.rate);
+  const cardName = newCard.dataset.name;
+
+  let cardCurrentLang = "zh";
+  let ptCacheText = "";
+  let zhCacheText = "";
+
+  function calcCardPreview(){
+    const amt = Number(amtInput.value) || 0;
+    const dayInc = amt * cardRate / 100;
+    const maturity = amt + dayInc * cardDay;
+    dayIncText.innerText = "R$" + dayInc.toFixed(2);
+    maturityText.innerText = "R$" + maturity.toFixed(2);
+    return {
+      amt: amt,
+      dayInc: dayInc,
+      maturity: maturity
+    };
+  }
+
+  function refreshSpeech(){
+    const data = calcCardPreview();
+
+    zhCacheText = langTextPool.zh.template
+      .replace(/{name}/g, cardName)
+      .replace(/{day}/g, cardDay)
+      .replace(/{amt}/g, data.amt.toFixed(2))
+      .replace(/{dayInc}/g, data.dayInc.toFixed(2))
+      .replace(/{maturity}/g, data.maturity.toFixed(2));
+
+    ptCacheText = langTextPool.pt.template
+      .replace(/{name}/g, cardName)
+      .replace(/{day}/g, cardDay)
+      .replace(/{amt}/g, data.amt.toFixed(2))
+      .replace(/{dayInc}/g, data.dayInc.toFixed(2))
+      .replace(/{maturity}/g, data.maturity.toFixed(2));
+
+    if(cardCurrentLang === "zh"){
+      speechContent.innerText = zhCacheText;
+    }else{
+      speechContent.innerText = ptCacheText;
+    }
+
+    speechBox.style.display = "block";
+  }
+
+  amtInput.addEventListener("input", calcCardPreview);
+
+  amtInput.addEventListener("blur", function(){
+    const data = calcCardPreview();
+
+    if(data.amt <= 0){
+      return;
+    }
+
+    const singleProfit = data.dayInc * cardDay;
+
+    globalTotalCap += data.amt;
+    globalTotalProfit += singleProfit;
+    globalSumDays += cardDay;
+    globalSumRate += cardRate * cardDay;
+
+    const avgRate = globalSumDays > 0 ? (globalSumRate / globalSumDays).toFixed(2) : 0;
+
+    document.getElementById("totalCap").innerText = globalTotalCap.toFixed(2);
+    document.getElementById("totalProfit").innerText = globalTotalProfit.toFixed(2);
+    document.getElementById("totalDays").innerText = globalSumDays;
+    document.getElementById("avgRate").innerText = avgRate;
+    document.getElementById("progressFill").style.width = Math.min(avgRate * 100, 100) + "%";
+
+    const now = new Date();
+    lastSaveTime = now.getHours() + ":" + String(now.getMinutes()).padStart(2, "0");
+    document.getElementById("saveTime").innerText = lastSaveTime;
+
+    refreshSpeech();
+
+    amtInput.value = 0;
+    calcCardPreview();
+  });
+
+  langBtns.forEach(function(btn){
+    btn.onclick = function(){
+      langBtns.forEach(function(b){
+        b.classList.remove("active");
+      });
+      btn.classList.add("active");
+      cardCurrentLang = btn.dataset.lang;
+
+      if(zhCacheText && ptCacheText){
+        if(cardCurrentLang === "zh"){
+          speechContent.innerText = zhCacheText;
+        }else{
+          speechContent.innerText = ptCacheText;
+        }
+      }
+    };
+  });
+
+  calcCardPreview();
+}
+
+function copyPTText(cardId){
+  const card = document.getElementById(cardId);
+  const name = card.dataset.name;
+  const day = Number(card.dataset.day);
+  const rate = Number(card.dataset.rate);
+  const amtInput = card.querySelector(".input-amt");
+  const amt = Number(amtInput.value) || 0;
+  const dayInc = amt * rate / 100;
+  const maturity = amt + dayInc * day;
+
+  const ptTxt = langTextPool.pt.template
+    .replace(/{name}/g, name)
+    .replace(/{day}/g, day)
+    .replace(/{amt}/g, amt.toFixed(2))
+    .replace(/{dayInc}/g, dayInc.toFixed(2))
+    .replace(/{maturity}/g, maturity.toFixed(2));
+
+  navigator.clipboard.writeText(ptTxt);
+}
+
+function clearAllData(){
+  if(!confirm("确定清空全部项目与累计资金数据？")) return;
+
+  globalTotalCap = 0;
+  globalTotalProfit = 0;
+  globalSumDays = 0;
+  globalSumRate = 0;
+  lastSaveTime = "--";
+
+  document.getElementById("totalCap").innerText = "0.00";
+  document.getElementById("totalProfit").innerText = "0.00";
+  document.getElementById("totalDays").innerText = "0";
+  document.getElementById("avgRate").innerText = "0.00";
+  document.getElementById("progressFill").style.width = "0%";
+  document.getElementById("saveTime").innerText = "--";
+
+  document.getElementById("projectListWrap").innerHTML = '<div class="empty-tip" id="emptyHint">暂无项目，点击右上角新建项目</div>';
+}
+</script>
+</body>
+</html>

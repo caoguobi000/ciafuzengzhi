@@ -403,55 +403,100 @@ const langTextPool = {
   }
 };
 
+// 全局持久化变量
 let globalTotalCap = 0;
 let globalTotalProfit = 0;
 let globalSumDays = 0;
 let globalSumRate = 0;
 let lastSaveTime = "--";
 let projectCardId = 0;
+// 存储所有项目数组，用于本地缓存
+let projectList = [];
 
-function openCreateModal(){
-  document.getElementById("createModal").style.display = "flex";
-  document.getElementById("modalProjName").value = "";
-  document.getElementById("modalCycle").value = 1;
-  document.getElementById("modalRate").value = 0.5;
+// 本地存储KEY常量
+const STORAGE_KEY = "bf_invest_data";
+
+// 页面加载读取本地缓存
+function loadStorageData(){
+  const storageRaw = localStorage.getItem(STORAGE_KEY);
+  if(!storageRaw) return;
+  try{
+    const data = JSON.parse(storageRaw);
+    // 恢复统计全局变量
+    globalTotalCap = data.totalCap || 0;
+    globalTotalProfit = data.totalProfit || 0;
+    globalSumDays = data.sumDays || 0;
+    globalSumRate = data.sumRate || 0;
+    lastSaveTime = data.saveTime || "--";
+    projectCardId = data.maxId || 0;
+    projectList = data.projects || [];
+    // 刷新页面统计展示
+    refreshStatView();
+    // 渲染所有缓存项目卡片
+    renderAllProjectCards();
+  }catch(e){
+    console.log("缓存数据解析失败，清空缓存",e);
+    localStorage.removeItem(STORAGE_KEY);
+  }
 }
-function closeCreateModal(){
-  document.getElementById("createModal").style.display = "none";
+
+// 保存全部数据到本地存储
+function saveToStorage(){
+  const saveData = {
+    totalCap: globalTotalCap,
+    totalProfit: globalTotalProfit,
+    sumDays: globalSumDays,
+    sumRate: globalSumRate,
+    saveTime: lastSaveTime,
+    maxId: projectCardId,
+    projects: projectList
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
 }
 
-function addNewProject(){
-  const pName = document.getElementById("modalProjName").value.trim();
-  const pDay = Number(document.getElementById("modalCycle").value);
-  const pRate = Number(document.getElementById("modalRate").value);
+// 刷新右侧统计数字视图
+function refreshStatView(){
+  document.getElementById("totalCap").innerText = globalTotalCap.toFixed(2);
+  document.getElementById("totalProfit").innerText = globalTotalProfit.toFixed(2);
+  document.getElementById("totalDays").innerText = globalSumDays;
+  document.getElementById("avgRate").innerText = globalSumDays > 0 ? (globalSumRate / globalSumDays).toFixed(2) : "0.00";
+  document.getElementById("progressFill").style.width = Math.min((globalSumDays > 0 ? (globalSumRate / globalSumDays) : 0)*100,100)+"%";
+  document.getElementById("saveTime").innerText = lastSaveTime;
+}
 
-  if(pName === ""){
-    alert("请填写项目名称！");
+// 渲染缓存内全部项目卡片
+function renderAllProjectCards(){
+  const wrap = document.getElementById("projectListWrap");
+  const emptyTip = document.getElementById("emptyHint");
+  wrap.innerHTML = "";
+  if(projectList.length === 0){
+    wrap.appendChild(emptyTip);
     return;
   }
-  if(isNaN(pDay) || pDay < 1 || isNaN(pRate) || pRate <= 0){
-    alert("天数和利率必须填写有效数字！");
-    return;
-  }
+  projectList.forEach(item => createSingleCard(item));
+}
 
-  document.getElementById("emptyHint").style.display = "none";
-
-  const cardId = "projCard_" + (++projectCardId);
+// 根据项目数据生成单个卡片（复用创建逻辑）
+function createSingleCard(projectItem){
+  const {cardId, name, day, rate, totalAddAmt, ptText} = projectItem;
+  const wrap = document.getElementById("projectListWrap");
+  const emptyTip = document.getElementById("emptyHint");
+  if(wrap.contains(emptyTip)) wrap.removeChild(emptyTip);
 
   const cardHtml = `
-    <div class="proj-card" id="${cardId}" data-day="${pDay}" data-rate="${pRate}" data-name="${pName}" data-pttext="">
+    <div class="proj-card" id="${cardId}" data-day="${day}" data-rate="${rate}" data-name="${name}" data-pttext="${encodeURIComponent(ptText)}">
       <div class="proj-name-block">
         <label>项目名称</label>
-        <input type="text" value="${pName}" readonly>
+        <input type="text" value="${name}" readonly>
       </div>
       <div class="input-row">
         <div class="form-item">
           <label>周期(天)</label>
-          <input type="number" value="${pDay}" readonly>
+          <input type="number" value="${day}" readonly>
         </div>
         <div class="form-item">
           <label>日利率(%)</label>
-          <input type="number" step="0.01" value="${pRate}" readonly>
+          <input type="number" step="0.01" value="${rate}" readonly>
         </div>
         <div class="form-item">
           <label>投入金额(R$)</label>
@@ -485,10 +530,12 @@ function addNewProject(){
       </div>
     </div>
   `;
+  wrap.insertAdjacentHTML("beforeend", cardHtml);
+  bindCardEvent(cardId, day, rate, name);
+}
 
-  document.getElementById("projectListWrap").insertAdjacentHTML("beforeend", cardHtml);
-  closeCreateModal();
-
+// 绑定卡片内部输入、切换语言事件
+function bindCardEvent(cardId, cardDay, cardRate, cardName){
   const newCard = document.getElementById(cardId);
   const amtInput = newCard.querySelector(".input-amt");
   const dayIncText = newCard.querySelector("[data-dayinc]");
@@ -496,10 +543,6 @@ function addNewProject(){
   const speechBox = newCard.querySelector(".speech-box");
   const speechContent = newCard.querySelector(".speech-content");
   const langBtns = newCard.querySelectorAll(".lang-btn");
-
-  const cardDay = Number(newCard.dataset.day);
-  const cardRate = Number(newCard.dataset.rate);
-  const cardName = newCard.dataset.name;
 
   let cardCurrentLang = "zh";
   let ptCacheText = "";
@@ -520,56 +563,51 @@ function addNewProject(){
 
   function refreshSpeech(){
     const data = calcCardPreview();
-
     zhCacheText = langTextPool.zh.template
       .replace(/{name}/g, cardName)
       .replace(/{day}/g, cardDay)
       .replace(/{amt}/g, data.amt.toFixed(2))
       .replace(/{dayInc}/g, data.dayInc.toFixed(2))
       .replace(/{maturity}/g, data.maturity.toFixed(2));
-
     ptCacheText = langTextPool.pt.template
       .replace(/{name}/g, cardName)
       .replace(/{day}/g, cardDay)
       .replace(/{amt}/g, data.amt.toFixed(2))
       .replace(/{dayInc}/g, data.dayInc.toFixed(2))
       .replace(/{maturity}/g, data.maturity.toFixed(2));
-
-    newCard.dataset.pttext = ptCacheText;
-
-    if(cardCurrentLang === "zh"){
-      speechContent.innerText = zhCacheText;
-    }else{
-      speechContent.innerText = ptCacheText;
-    }
-    // 输入金额后自动展开话术框
+    newCard.dataset.pttext = encodeURIComponent(ptCacheText);
+    if(cardCurrentLang === "zh") speechContent.innerText = zhCacheText;
+    else speechContent.innerText = ptCacheText;
     speechBox.style.display = "block";
   }
 
   amtInput.addEventListener("input", calcCardPreview);
-
   amtInput.addEventListener("blur", function(){
     const data = calcCardPreview();
     if(data.amt <= 0) return;
-
     const singleProfit = data.dayInc * cardDay;
     globalTotalCap += data.amt;
     globalTotalProfit += singleProfit;
     globalSumDays += cardDay;
     globalSumRate += cardRate * cardDay;
-
-    const avgRate = globalSumDays > 0 ? (globalSumRate / globalSumDays).toFixed(2) : 0;
-    document.getElementById("totalCap").innerText = globalTotalCap.toFixed(2);
-    document.getElementById("totalProfit").innerText = globalTotalProfit.toFixed(2);
-    document.getElementById("totalDays").innerText = globalSumDays;
-    document.getElementById("avgRate").innerText = avgRate;
-    document.getElementById("progressFill").style.width = Math.min(avgRate * 100, 100) + "%";
-
     const now = new Date();
     lastSaveTime = now.getHours() + ":" + String(now.getMinutes()).padStart(2, "0");
-    document.getElementById("saveTime").innerText = lastSaveTime;
-
     refreshSpeech();
+    // 更新项目缓存数组
+    const existIndex = projectList.findIndex(p => p.cardId === cardId);
+    const projectData = {
+      cardId: cardId,
+      name: cardName,
+      day: cardDay,
+      rate: cardRate,
+      totalAddAmt: data.amt,
+      ptText: ptCacheText
+    };
+    if(existIndex > -1) projectList[existIndex] = projectData;
+    else projectList.push(projectData);
+    // 保存本地
+    refreshStatView();
+    saveToStorage();
     amtInput.value = 0;
     calcCardPreview();
   });
@@ -579,16 +617,49 @@ function addNewProject(){
       langBtns.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       cardCurrentLang = btn.dataset.lang;
-      if(zhCacheText && ptCacheText){
-        speechContent.innerText = cardCurrentLang === "zh" ? zhCacheText : ptCacheText;
-      }
+      if(zhCacheText && ptCacheText) speechContent.innerText = cardCurrentLang === "zh" ? zhCacheText : ptCacheText;
     };
   });
-
   calcCardPreview();
 }
 
-// 手动切换折叠/展开话术
+function openCreateModal(){
+  document.getElementById("createModal").style.display = "flex";
+  document.getElementById("modalProjName").value = "";
+  document.getElementById("modalCycle").value = 1;
+  document.getElementById("modalRate").value = 0.5;
+}
+function closeCreateModal(){
+  document.getElementById("createModal").style.display = "none";
+}
+
+function addNewProject(){
+  const pName = document.getElementById("modalProjName").value.trim();
+  const pDay = Number(document.getElementById("modalCycle").value);
+  const pRate = Number(document.getElementById("modalRate").value);
+  if(pName === ""){
+    alert("请填写项目名称！");
+    return;
+  }
+  if(isNaN(pDay) || pDay < 1 || isNaN(pRate) || pRate <= 0){
+    alert("天数和利率必须填写有效数字！");
+    return;
+  }
+  const newCardId = "projCard_" + (++projectCardId);
+  const projectTemp = {
+    cardId: newCardId,
+    name: pName,
+    day: pDay,
+    rate: pRate,
+    totalAddAmt: 0,
+    ptText: ""
+  };
+  projectList.push(projectTemp);
+  createSingleCard(projectTemp);
+  closeCreateModal();
+  saveToStorage();
+}
+
 function toggleSpeech(cardId){
   const wrap = document.getElementById("speechWrap_" + cardId);
   const btn = wrap.querySelector(".toggle-speech-btn");
@@ -605,11 +676,8 @@ async function handleCopy(cardId){
   const card = document.getElementById(cardId);
   const wrap = document.getElementById("speechWrap_" + cardId);
   const btn = document.getElementById("copyBtn_" + cardId);
-  const copyText = card.dataset.pttext;
-  if(!copyText){
-    return;
-  }
-
+  const copyText = decodeURIComponent(card.dataset.pttext);
+  if(!copyText) return;
   try {
     await navigator.clipboard.writeText(copyText);
   } catch (err) {
@@ -620,28 +688,26 @@ async function handleCopy(cardId){
     document.execCommand('copy');
     document.body.removeChild(temp);
   }
-
   const originTxt = "一键复制巴西葡语文案";
   btn.innerText = "复制成功";
-  // 复制完成自动收起话术区域
   wrap.style.display = "none";
-  setTimeout(()=> {
-    btn.innerText = originTxt;
-  }, 3000);
+  setTimeout(()=> btn.innerText = originTxt, 3000);
 }
 
 function clearAllData(){
   if(!confirm("确定清空全部项目与累计资金数据？")) return;
   globalTotalCap = globalTotalProfit = globalSumDays = globalSumRate = 0;
   lastSaveTime = "--";
-  document.getElementById("totalCap").innerText = "0.00";
-  document.getElementById("totalProfit").innerText = "0.00";
-  document.getElementById("totalDays").innerText = "0";
-  document.getElementById("avgRate").innerText = "0.00";
-  document.getElementById("progressFill").style.width = "0%";
-  document.getElementById("saveTime").innerText = "--";
+  projectCardId = 0;
+  projectList = [];
+  // 清除本地缓存
+  localStorage.removeItem(STORAGE_KEY);
+  refreshStatView();
   document.getElementById("projectListWrap").innerHTML = '<div class="empty-tip" id="emptyHint">暂无项目，点击右上角新建项目</div>';
 }
+
+// 页面加载完成读取缓存恢复数据
+window.onload = loadStorageData;
 </script>
 </body>
 </html>

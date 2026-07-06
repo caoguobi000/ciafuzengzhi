@@ -63,6 +63,20 @@ body{
   background:#dce1e8;
   border-radius:14px;
   padding:20px;
+  position:relative;
+}
+/* 单个删除按钮样式 */
+.del-card-btn{
+  position:absolute;
+  top:12px;
+  right:12px;
+  background:#ef4444;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:4px 10px;
+  font-size:13px;
+  cursor:pointer;
 }
 .proj-name-block{
   margin-bottom:18px;
@@ -410,10 +424,7 @@ let globalSumDays = 0;
 let globalSumRate = 0;
 let lastSaveTime = "--";
 let projectCardId = 0;
-// 存储所有项目数组，用于本地缓存
 let projectList = [];
-
-// 本地存储KEY常量
 const STORAGE_KEY = "bf_invest_data";
 
 // 页面加载读取本地缓存
@@ -422,7 +433,6 @@ function loadStorageData(){
   if(!storageRaw) return;
   try{
     const data = JSON.parse(storageRaw);
-    // 恢复统计全局变量
     globalTotalCap = data.totalCap || 0;
     globalTotalProfit = data.totalProfit || 0;
     globalSumDays = data.sumDays || 0;
@@ -430,9 +440,7 @@ function loadStorageData(){
     lastSaveTime = data.saveTime || "--";
     projectCardId = data.maxId || 0;
     projectList = data.projects || [];
-    // 刷新页面统计展示
     refreshStatView();
-    // 渲染所有缓存项目卡片
     renderAllProjectCards();
   }catch(e){
     console.log("缓存数据解析失败，清空缓存",e);
@@ -476,7 +484,7 @@ function renderAllProjectCards(){
   projectList.forEach(item => createSingleCard(item));
 }
 
-// 根据项目数据生成单个卡片（复用创建逻辑）
+// 根据项目数据生成单个卡片（新增删除按钮）
 function createSingleCard(projectItem){
   const {cardId, name, day, rate, totalAddAmt, ptText} = projectItem;
   const wrap = document.getElementById("projectListWrap");
@@ -485,6 +493,7 @@ function createSingleCard(projectItem){
 
   const cardHtml = `
     <div class="proj-card" id="${cardId}" data-day="${day}" data-rate="${rate}" data-name="${name}" data-pttext="${encodeURIComponent(ptText)}">
+      <button class="del-card-btn" onclick="deleteSingleCard('${cardId}')">删除项目</button>
       <div class="proj-name-block">
         <label>项目名称</label>
         <input type="text" value="${name}" readonly>
@@ -576,8 +585,7 @@ function bindCardEvent(cardId, cardDay, cardRate, cardName){
       .replace(/{dayInc}/g, data.dayInc.toFixed(2))
       .replace(/{maturity}/g, data.maturity.toFixed(2));
     newCard.dataset.pttext = encodeURIComponent(ptCacheText);
-    if(cardCurrentLang === "zh") speechContent.innerText = zhCacheText;
-    else speechContent.innerText = ptCacheText;
+    speechContent.innerText = cardCurrentLang === "zh" ? zhCacheText : ptCacheText;
     speechBox.style.display = "block";
   }
 
@@ -593,7 +601,6 @@ function bindCardEvent(cardId, cardDay, cardRate, cardName){
     const now = new Date();
     lastSaveTime = now.getHours() + ":" + String(now.getMinutes()).padStart(2, "0");
     refreshSpeech();
-    // 更新项目缓存数组
     const existIndex = projectList.findIndex(p => p.cardId === cardId);
     const projectData = {
       cardId: cardId,
@@ -605,7 +612,6 @@ function bindCardEvent(cardId, cardDay, cardRate, cardName){
     };
     if(existIndex > -1) projectList[existIndex] = projectData;
     else projectList.push(projectData);
-    // 保存本地
     refreshStatView();
     saveToStorage();
     amtInput.value = 0;
@@ -621,6 +627,42 @@ function bindCardEvent(cardId, cardDay, cardRate, cardName){
     };
   });
   calcCardPreview();
+}
+
+// 【新增】删除单个项目
+function deleteSingleCard(cardId){
+  const cardDom = document.getElementById(cardId);
+  const cardName = cardDom.dataset.name;
+  const confirmDel = confirm(`确认要删除项目【${cardName}】吗？删除后该项目所有投入金额会从总统计中扣除！`);
+  if(!confirmDel) return;
+
+  // 1. 找到项目数据
+  const targetIdx = projectList.findIndex(p => p.cardId === cardId);
+  if(targetIdx === -1) return;
+  const targetProj = projectList[targetIdx];
+
+  // 2. 扣减全局统计（移除该项目所有累计投入）
+  const singleProfit = targetProj.totalAddAmt * targetProj.rate / 100 * targetProj.day;
+  globalTotalCap -= targetProj.totalAddAmt;
+  globalTotalProfit -= singleProfit;
+  globalSumDays -= targetProj.day;
+  globalSumRate -= targetProj.rate;
+
+  // 3. 数组移除项目
+  projectList.splice(targetIdx, 1);
+
+  // 4. 页面移除DOM卡片
+  cardDom.remove();
+
+  // 5. 如果没有项目，显示空白提示
+  const wrap = document.getElementById("projectListWrap");
+  if(projectList.length === 0){
+    wrap.innerHTML = '<div class="empty-tip" id="emptyHint">暂无项目，点击右上角新建项目</div>';
+  }
+
+  // 6. 刷新统计 + 同步本地缓存
+  refreshStatView();
+  saveToStorage();
 }
 
 function openCreateModal(){
@@ -700,7 +742,6 @@ function clearAllData(){
   lastSaveTime = "--";
   projectCardId = 0;
   projectList = [];
-  // 清除本地缓存
   localStorage.removeItem(STORAGE_KEY);
   refreshStatView();
   document.getElementById("projectListWrap").innerHTML = '<div class="empty-tip" id="emptyHint">暂无项目，点击右上角新建项目</div>';

@@ -157,8 +157,22 @@ body{
   padding:14px;
   background:#e6f7f2;
   border-radius:8px;
-  display:none;
   line-height:1.7;
+}
+.speech-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+.toggle-speech-btn{
+  padding:4px 10px;
+  border:none;
+  background:#999;
+  color:#fff;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:13px;
 }
 .copy-pt-btn{
   margin-top:10px;
@@ -425,7 +439,7 @@ function addNewProject(){
   const cardId = "projCard_" + (++projectCardId);
 
   const cardHtml = `
-    <div class="proj-card" id="${cardId}" data-day="${pDay}" data-rate="${pRate}" data-name="${pName}">
+    <div class="proj-card" id="${cardId}" data-day="${pDay}" data-rate="${pRate}" data-name="${pName}" data-pttext="">
       <div class="proj-name-block">
         <label>项目名称</label>
         <input type="text" value="${pName}" readonly>
@@ -461,9 +475,13 @@ function addNewProject(){
           <button class="lang-btn" data-lang="pt">BR Português</button>
         </div>
       </div>
-      <div class="speech-box">
+      <div class="speech-box" id="speechWrap_${cardId}" style="display:none;">
+        <div class="speech-head">
+          <span>话术预览</span>
+          <button class="toggle-speech-btn" onclick="toggleSpeech('${cardId}')">收起</button>
+        </div>
         <div class="speech-content"></div>
-        <button class="copy-pt-btn" onclick="copyPTText('${cardId}')">一键复制巴西葡语文案</button>
+        <button class="copy-pt-btn" id="copyBtn_${cardId}" onclick="handleCopy('${cardId}')">一键复制巴西葡语文案</button>
       </div>
     </div>
   `;
@@ -517,12 +535,14 @@ function addNewProject(){
       .replace(/{dayInc}/g, data.dayInc.toFixed(2))
       .replace(/{maturity}/g, data.maturity.toFixed(2));
 
+    newCard.dataset.pttext = ptCacheText;
+
     if(cardCurrentLang === "zh"){
       speechContent.innerText = zhCacheText;
     }else{
       speechContent.innerText = ptCacheText;
     }
-
+    // 输入金额后自动展开话术框
     speechBox.style.display = "block";
   }
 
@@ -530,20 +550,15 @@ function addNewProject(){
 
   amtInput.addEventListener("blur", function(){
     const data = calcCardPreview();
-
-    if(data.amt <= 0){
-      return;
-    }
+    if(data.amt <= 0) return;
 
     const singleProfit = data.dayInc * cardDay;
-
     globalTotalCap += data.amt;
     globalTotalProfit += singleProfit;
     globalSumDays += cardDay;
     globalSumRate += cardRate * cardDay;
 
     const avgRate = globalSumDays > 0 ? (globalSumRate / globalSumDays).toFixed(2) : 0;
-
     document.getElementById("totalCap").innerText = globalTotalCap.toFixed(2);
     document.getElementById("totalProfit").innerText = globalTotalProfit.toFixed(2);
     document.getElementById("totalDays").innerText = globalSumDays;
@@ -555,25 +570,17 @@ function addNewProject(){
     document.getElementById("saveTime").innerText = lastSaveTime;
 
     refreshSpeech();
-
     amtInput.value = 0;
     calcCardPreview();
   });
 
   langBtns.forEach(function(btn){
     btn.onclick = function(){
-      langBtns.forEach(function(b){
-        b.classList.remove("active");
-      });
+      langBtns.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       cardCurrentLang = btn.dataset.lang;
-
       if(zhCacheText && ptCacheText){
-        if(cardCurrentLang === "zh"){
-          speechContent.innerText = zhCacheText;
-        }else{
-          speechContent.innerText = ptCacheText;
-        }
+        speechContent.innerText = cardCurrentLang === "zh" ? zhCacheText : ptCacheText;
       }
     };
   });
@@ -581,42 +588,58 @@ function addNewProject(){
   calcCardPreview();
 }
 
-function copyPTText(cardId){
+// 手动切换折叠/展开话术
+function toggleSpeech(cardId){
+  const wrap = document.getElementById("speechWrap_" + cardId);
+  const btn = wrap.querySelector(".toggle-speech-btn");
+  if(wrap.style.display === "none"){
+    wrap.style.display = "block";
+    btn.innerText = "收起";
+  }else{
+    wrap.style.display = "none";
+    btn.innerText = "展开";
+  }
+}
+
+async function handleCopy(cardId){
   const card = document.getElementById(cardId);
-  const name = card.dataset.name;
-  const day = Number(card.dataset.day);
-  const rate = Number(card.dataset.rate);
-  const amtInput = card.querySelector(".input-amt");
-  const amt = Number(amtInput.value) || 0;
-  const dayInc = amt * rate / 100;
-  const maturity = amt + dayInc * day;
+  const wrap = document.getElementById("speechWrap_" + cardId);
+  const btn = document.getElementById("copyBtn_" + cardId);
+  const copyText = card.dataset.pttext;
+  if(!copyText){
+    return;
+  }
 
-  const ptTxt = langTextPool.pt.template
-    .replace(/{name}/g, name)
-    .replace(/{day}/g, day)
-    .replace(/{amt}/g, amt.toFixed(2))
-    .replace(/{dayInc}/g, dayInc.toFixed(2))
-    .replace(/{maturity}/g, maturity.toFixed(2));
+  try {
+    await navigator.clipboard.writeText(copyText);
+  } catch (err) {
+    const temp = document.createElement('textarea');
+    temp.value = copyText;
+    document.body.appendChild(temp);
+    temp.select();
+    document.execCommand('copy');
+    document.body.removeChild(temp);
+  }
 
-  navigator.clipboard.writeText(ptTxt);
+  const originTxt = "一键复制巴西葡语文案";
+  btn.innerText = "复制成功";
+  // 复制完成自动收起话术区域
+  wrap.style.display = "none";
+  setTimeout(()=> {
+    btn.innerText = originTxt;
+  }, 3000);
 }
 
 function clearAllData(){
   if(!confirm("确定清空全部项目与累计资金数据？")) return;
-
-  globalTotalCap = 0;
-  globalTotalProfit = 0;
-  globalSumDays = 0;
-  globalSumRate = 0;
+  globalTotalCap = globalTotalProfit = globalSumDays = globalSumRate = 0;
   lastSaveTime = "--";
-
   document.getElementById("totalCap").innerText = "0.00";
   document.getElementById("totalProfit").innerText = "0.00";
   document.getElementById("totalDays").innerText = "0";
   document.getElementById("avgRate").innerText = "0.00";
   document.getElementById("progressFill").style.width = "0%";
   document.getElementById("saveTime").innerText = "--";
-
   document.getElementById("projectListWrap").innerHTML = '<div class="empty-tip" id="emptyHint">暂无项目，点击右上角新建项目</div>';
 }
 </script>
